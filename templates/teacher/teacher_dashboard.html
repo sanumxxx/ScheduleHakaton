@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Сообщения преподавателя{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Сообщения преподавателя</h1>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                <label for="content">Сообщение</label>
+                {{ form.content(class="form-control") }}
+            </div>
+            <div class="form-group">
+                <label for="group_ids">Группы</label>
+                {{ form.group_ids(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+        <hr>
+        <h2>Отправленные сообщения</h2>
+        <ul class="list-group">
+            {% for message in messages %}
+                <li class="list-group-item">
+                    <p>{{ message.content }}</p>
+                    <small>Отправлено: {{ message.date_created }}</small>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

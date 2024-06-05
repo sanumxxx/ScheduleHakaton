@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Управление расписанием{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Управление расписанием</h1>
+        <form id="filter-form">
+            <div class="form-group">
+                <label for="group_id">Группа</label>
+                <select id="group_id" name="group_id" class="form-control">
+                    <option value="">Выберите группу</option>
+                    {% for group in form.group_id.choices %}
+                        <option value="{{ group[0] }}" {% if group[0] == selected_group %}selected{% endif %}>{{ group[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="day">День недели</label>
+                <select id="day" name="day" class="form-control">
+                    {% for day in form.day.choices %}
+                        <option value="{{ day[0] }}" {% if day[0] == selected_day %}selected{% endif %}>{{ day[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+        <hr>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="group_id" value="{{ selected_group }}">
+            <input type="hidden" name="day" value="{{ selected_day }}">
+            {% for lesson_num in range(1, 6) %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        {{ lesson_num }} пара
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="col-md-6">
+                                <label for="subjects_green_{{ lesson_num }}">Зеленая неделя - Дисциплина</label>
+                                <select class="form-control" name="subjects_green_{{ lesson_num }}">
+                                    <option value="">-- Выберите дисциплину --</option>
+                                    {% for subject in form.subjects_green.choices %}
+                                        <option value="{{ subject[0] }}" {% if schedule_entries_green[lesson_num] and schedule_entries_green[lesson_num].subject_id == subject[0] %}selected{% endif %}>{{ subject[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rooms_green_{{ lesson_num }}">Аудитория</label>
+                                <input type="text" class="form-control" name="rooms_green_{{ lesson_num }}" value="{{ schedule_entries_green[lesson_num].room if schedule_entries_green[lesson_num] else '' }}">
+                            </div>
+                        </div>
+                        <div class="form-row mt-2">
+                            <div class="col-md-6">
+                                <label for="subjects_red_{{ lesson_num }}">Красная неделя - Дисциплина</label>
+                                <select class="form-control" name="subjects_red_{{ lesson_num }}">
+                                    <option value="">-- Выберите дисциплину --</option>
+                                    {% for subject in form.subjects_red.choices %}
+                                        <option value="{{ subject[0] }}" {% if schedule_entries_red[lesson_num] and schedule_entries_red[lesson_num].subject_id == subject[0] %}selected{% endif %}>{{ subject[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="rooms_red_{{ lesson_num }}">Аудитория</label>
+                                <input type="text" class="form-control" name="rooms_red_{{ lesson_num }}" value="{{ schedule_entries_red[lesson_num].room if schedule_entries_red[lesson_num] else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+                <button type="button" class="btn btn-danger" onclick="clearSchedule()">Очистить расписание</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('group_id').addEventListener('change', function() {
+        updateScheduleForm();
+    });
+    document.getElementById('day').addEventListener('change', function() {
+        updateScheduleForm();
+    });
+
+    function updateScheduleForm() {
+        var group_id = document.getElementById('group_id').value;
+        var day = document.getElementById('day').value;
+        var form = document.getElementById('filter-form');
+        var formData = new FormData(form);
+
+        if (group_id && day) {
+            fetch('{{ url_for("manage_schedule") }}?' + new URLSearchParams(formData), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                var newForm = doc.querySelector('form[method="POST"]');
+                document.querySelector('form[method="POST"]').replaceWith(newForm);
+            });
+        }
+    }
+
+    function clearSchedule() {
+        var group_id = document.getElementById('group_id').value;
+        var day = document.getElementById('day').value;
+        if (group_id && day) {
+            fetch('{{ url_for("clear_schedule") }}?' + new URLSearchParams({group_id: group_id, day: day}), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateScheduleForm();
+                } else {
+                    alert('Ошибка при очистке расписания');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

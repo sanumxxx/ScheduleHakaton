@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Админ панель{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Админ панель</h1>
+        <div class="list-group">
+            <a href="{{ url_for('manage_groups') }}" class="list-group-item list-group-item-action">Управление группами</a>
+            <a href="{{ url_for('manage_departments') }}" class="list-group-item list-group-item-action">Управление кафедрами</a>
+            <a href="{{ url_for('manage_faculties') }}" class="list-group-item list-group-item-action">Управление факультетами</a>
+            <a href="{{ url_for('manage_subjects') }}" class="list-group-item list-group-item-action">Управление дисциплинами</a>
+            <a href="{{ url_for('manage_schedule') }}" class="list-group-item list-group-item-action">Управление расписанием</a>
+            <a href="{{ url_for('manage_teachers') }}" class="list-group-item list-group-item-action">Управление преподавателями</a>
+            <a href="{{ url_for('global_messages') }}" class="list-group-item list-group-item-action">Глобальные сообщения</a>
+            <a href="{{ url_for('registration_requests') }}" class="list-group-item list-group-item-action">
+                Заявки на регистрацию <span class="badge badge-primary">{{ registration_request_count }}</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

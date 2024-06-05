@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Сообщения{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Сообщения</h1>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.content.label(class="form-control-label") }}
+                {{ form.content(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.group_ids.label(class="form-control-label") }}
+                {{ form.group_ids(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+        <table class="table table-bordered mt-4">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Сообщение</th>
+                    <th>Дата создания</th>
+                    <th>Группы</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for message in messages %}
+                    <tr>
+                        <td>{{ message.id }}</td>
+                        <td>{{ message.content }}</td>
+                        <td>{{ message.date_created }}</td>
+                        <td>
+                            {% for group in message.groups %}
+                                {{ group.name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

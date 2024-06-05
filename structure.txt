@@ -1,0 +1,28 @@
+project/
+│
+├── app.py
+├── models.py
+├── forms.py
+├── templates/
+│   ├── base.html
+│   ├── index.html
+│   ├── login.html
+│   ├── register.html
+│   ├── admin/
+│   │   ├── dashboard.html
+│   │   ├── manage_groups.html
+│   │   ├── manage_departments.html
+│   │   ├── manage_faculties.html
+│   │   ├── manage_subjects.html
+│   │   ├── manage_schedule.html
+│   │   ├── manage_teachers.html
+│   │   ├── global_messages.html
+│   ├── teacher/
+│   │   ├── dashboard.html
+│   │   ├── view_schedule.html
+│   │   ├── add_grades.html
+│   │   ├── announcements.html
+│
+├── static/
+│   ├── css/
+│   │   ├── styles.css

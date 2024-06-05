@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Просмотр расписания{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Просмотр расписания</h1>
+        <form id="filter-form">
+            <div class="form-group">
+                <label for="group_id">Группа</label>
+                <select id="group_id" name="group_id" class="form-control">
+                    <option value="">Выберите группу</option>
+                    {% for group in groups %}
+                        <option value="{{ group.id }}" {% if group.id == selected_group %}selected{% endif %}>{{ group.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="week_type">Тип недели</label>
+                <select id="week_type" name="week_type" class="form-control">
+                    <option value="1" {% if selected_week_type == 1 %}selected{% endif %}>Зеленая неделя</option>
+                    <option value="2" {% if selected_week_type == 2 %}selected{% endif %}>Красная неделя</option>
+                </select>
+            </div>
+        </form>
+        <hr>
+        {% if selected_group %}
+            <div class="schedule-table">
+                {% for day, lessons in schedule.items() %}
+                    <div class="day-schedule">
+                        <h4>{{ ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'][day-1] }}</h4>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Время</th>
+                                    <th>Дисциплина</th>
+                                    <th>Аудитория</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson_num in range(1, 6) %}
+                                    <tr>
+                                        <td>{{ lesson_num }} пара</td>
+                                        <td>{{ lessons[lesson_num].subject.name if lessons[lesson_num] else '' }}</td>
+                                        <td>{{ lessons[lesson_num].room if lessons[lesson_num] else '' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Выберите группу для просмотра расписания.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.getElementById('group_id').addEventListener('change', function() {
+        updateScheduleView();
+    });
+    document.getElementById('week_type').addEventListener('change', function() {
+        updateScheduleView();
+    });
+
+    function updateScheduleView() {
+        var group_id = document.getElementById('group_id').value;
+        var week_type = document.getElementById('week_type').value;
+        var form = document.getElementById('filter-form');
+        var formData = new FormData(form);
+
+        if (group_id) {
+            window.location.href = '{{ url_for("view_schedule") }}?' + new URLSearchParams(formData);
+        }
+    }
+</script>
+{% endblock %}

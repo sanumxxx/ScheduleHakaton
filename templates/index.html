@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Добро пожаловать в NeuroSchedule</h1>
+        {% if current_user.is_authenticated %}
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">Перейти в админ панель</a>
+            {% else %}
+                <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-primary">Перейти в панель преподавателя</a>
+            {% endif %}
+        {% else %}
+            <p>Пожалуйста, <a href="{{ url_for('login') }}">войдите</a> или <a href="{{ url_for('register') }}">зарегистрируйтесь</a>.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

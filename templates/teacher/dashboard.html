@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Панель преподавателя{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Панель преподавателя</h1>
+        <div class="list-group">
+            <a href="{{ url_for('view_schedule') }}" class="list-group-item list-group-item-action">Просмотр расписания</a>
+            <a href="{{ url_for('teacher_messages') }}" class="list-group-item list-group-item-action">
+                Сообщения <span class="badge badge-primary">{{ message_count }}</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

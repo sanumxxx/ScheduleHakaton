@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Заявки на регистрацию{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Заявки на регистрацию</h1>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Имя пользователя</th>
+                    <th>Кафедра</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in requests %}
+                <tr>
+                    <td>{{ request.id }}</td>
+                    <td>{{ request.username }}</td>
+                    <td>{{ request.department.name }}</td>
+                    <td>
+                        <form action="{{ url_for('approve_registration', request_id=request.id) }}" method="post">
+                            <button type="submit" class="btn btn-success">Одобрить</button>
+                        </form>
+                        <form action="{{ url_for('reject_registration', request_id=request.id) }}" method="post" style="display:inline;">
+                            <button type="submit" class="btn btn-danger">Отклонить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

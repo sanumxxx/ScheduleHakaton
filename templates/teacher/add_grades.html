@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Проставление оценок{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Проставление оценок</h1>
+        <form method="POST" action="{{ url_for('add_grades', group_id=group_id, subject_id=subject_id) }}">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.student_id.label(class="form-control-label") }}
+                {{ form.student_id(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.value.label(class="form-control-label") }}
+                {{ form.value(class="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.submit(class="btn btn-success") }}
+            </div>
+        </form>
+        <h2>Список студентов</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Имя студента</th>
+                    <th>Оценка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                    <tr>
+                        <td>{{ student.username }}</td>
+                        <td>
+                            {% for grade in student.grades %}
+                                {% if grade.subject_id == subject_id %}
+                                    {{ grade.value }}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
