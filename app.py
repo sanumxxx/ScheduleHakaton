@@ -4,10 +4,13 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from datetime import datetime
 from models import db, User, Group, Department, Faculty, Teacher, Subject, ScheduleEntry, Grade, RegistrationRequest, \
-    Message
+    Message, Student
 from forms import LoginForm, RegisterForm, GroupForm, DepartmentForm, FacultyForm, SubjectForm, ScheduleEntryForm, \
-    GradeForm, MessageForm, TeacherForm, EditTeacherForm
+    GradeForm, MessageForm, TeacherForm, EditTeacherForm, StudentForm, FlaskForm
 from flask import jsonify
+import email_validator
+from flask_wtf import CSRFProtect
+
 
 
 app = Flask(__name__)
@@ -17,7 +20,7 @@ db.init_app(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-
+csrf = CSRFProtect(app)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -517,6 +520,96 @@ def teacher_messages():
 
     messages = Message.query.filter(Message.groups.any(Group.department_id == teacher.department_id)).all()
     return render_template('teacher/messages.html', messages=messages, form=form)
+
+@app.route('/students')
+@login_required
+def students():
+    groups = Group.query.all()
+    return render_template('students.html', groups=groups)
+
+@app.route('/teacher/students/<int:group_id>', methods=['GET'])
+@login_required
+def view_students(group_id):
+    group = Group.query.get_or_404(group_id)
+    students = group.students
+    form = FlaskForm()  # Создаем пустую форму для CSRF-токена
+    return render_template('teacher/view_students.html', group=group, students=students, form=form)
+
+@app.route('/teacher/students/add/<int:group_id>', methods=['GET', 'POST'])
+@login_required
+def add_student(group_id):
+    group = Group.query.get_or_404(group_id)
+    form = StudentForm()
+
+    if form.validate_on_submit():
+        student = Student(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            email=form.email.data,
+            group_id=group_id
+        )
+        db.session.add(student)
+        db.session.commit()
+        flash('Студент добавлен', 'success')
+        return redirect(url_for('view_students', group_id=group_id))
+
+    return render_template('teacher/add_student.html', form=form, group=group)
+@app.route('/teacher/students/edit/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def edit_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    form = StudentForm(obj=student)
+
+    if form.validate_on_submit():
+        student.first_name = form.first_name.data
+        student.last_name = form.last_name.data
+        student.email = form.email.data
+        student.group_id = form.group_id.data
+        db.session.commit()
+        flash('Данные студента обновлены', 'success')
+        return redirect(url_for('view_students', group_id=student.group_id))
+
+    return render_template('teacher/edit_student.html', form=form)
+@app.route('/teacher/delete_student/<int:student_id>', methods=['POST'])
+@login_required
+def delete_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    group_id = student.group_id  # Получаем ID группы студента
+    db.session.delete(student)
+    db.session.commit()
+    return redirect(url_for('teacher_students', group_id=group_id))
+
+@app.route('/teacher/students')
+@login_required
+def teacher_students():
+    teacher = Teacher.query.filter_by(user_id=current_user.id).first()
+    if not teacher:
+        flash('Вы не являетесь преподавателем', 'danger')
+        return redirect(url_for('teacher_dashboard'))
+
+    groups = Group.query.filter_by(department_id=teacher.department_id).all()
+    return render_template('teacher/students.html', groups=groups)
+
+@app.route('/teacher/students/<int:group_id>', methods=['GET', 'POST'])
+@login_required
+def manage_students(group_id):
+    group = Group.query.get_or_404(group_id)
+    form = StudentForm()
+
+    if form.validate_on_submit():
+        student = Student(
+            first_name=form.first_name.data,
+            last_name=form.last_name.data,
+            email=form.email.data,
+            group_id=form.group_id.data
+        )
+        db.session.add(student)
+        db.session.commit()
+        flash('Студент добавлен', 'success')
+        return redirect(url_for('manage_students', group_id=group_id))
+
+    students = Student.query.filter_by(group_id=group_id).all()
+    return render_template('teacher/view_students.html', group=group, students=students, form=form)
 
 if __name__ == "__main__":
     with app.app_context():

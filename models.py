@@ -91,3 +91,11 @@ message_group = db.Table(
     db.Column('message_id', db.Integer, db.ForeignKey('message.id'), primary_key=True),
     db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True)
 )
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
+    is_registered = db.Column(db.Boolean, default=False)
+    group = db.relationship('Group', backref=db.backref('students', lazy=True))

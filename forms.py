@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, SelectMultipleField, IntegerField, TextAreaField
-from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, Optional
+from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, Optional, Email
 from models import User, Faculty, Department, Group, Teacher, Subject
 
 class LoginForm(FlaskForm):
@@ -77,3 +77,13 @@ class EditTeacherForm(FlaskForm):
     name = StringField('Имя преподавателя', validators=[DataRequired(), Length(min=2, max=100)])
     department_id = SelectField('Кафедра', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Сохранить изменения')
+class StudentForm(FlaskForm):
+    first_name = StringField('Имя', validators=[DataRequired(), Length(min=2, max=50)])
+    last_name = StringField('Фамилия', validators=[DataRequired(), Length(min=2, max=50)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    group_id = SelectField('Группа', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Сохранить')
+
+    def __init__(self, *args, **kwargs):
+        super(StudentForm, self).__init__(*args, **kwargs)
+        self.group_id.choices = [(g.id, g.name) for g in Group.query.all()]
