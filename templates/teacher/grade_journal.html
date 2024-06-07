@@ -1,3 +1,4 @@
+<!-- grade_journal.html -->
 {% extends "base.html" %}
 
 {% block title %}Электронный журнал{% endblock %}
@@ -8,26 +9,143 @@
         <h1 class="my-4">Электронный журнал</h1>
         <h2>Предмет: {{ subject.name }}</h2>
         <h3>Группа: {{ group.name }}</h3>
-        <form method="POST">
-            {{ form.hidden_tag() }}
-            <table class="table table-bordered">
-                <thead>
+        <table class="table table-bordered" id="grade-table">
+            <thead>
+                <tr>
+                    <th>Студент</th>
+                    <th>Оценка 1</th>
+                    <th>Оценка 2</th>
+                    <th>Оценка 3</th>
+                    <th>Оценка 4</th>
+                    <th>Оценка 5</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
                     <tr>
-                        <th>Студент</th>
-                        <th>Оценка</th>
+                        <td>{{ student.first_name }} {{ student.last_name }}</td>
+                        {% for i in range(1, 6) %}
+                            <td class="grade-cell" data-student-id="{{ student.id }}" data-grade-index="{{ i }}">
+                                {% set grade = student.grades|selectattr('grade_index', 'equalto', i)|first %}
+                                {% if grade %}
+                                    {{ grade.grade }}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
                     </tr>
-                </thead>
-                <tbody>
-                    {% for student in students %}
-                        <tr>
-                            <td>{{ student.first_name }} {{ student.last_name }}</td>
-                            <td><input type="text" name="grade_{{ student.id }}" class="form-control"></td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-        </form>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button id="save-button" class="btn btn-primary">Сохранить</button>
     </div>
 </div>
+
+<div id="context-menu" class="context-menu">
+    <ul>
+        <li data-grade="2">2</li>
+        <li data-grade="3">3</li>
+        <li data-grade="4">4</li>
+        <li data-grade="5">5</li>
+    </ul>
+</div>
+
+<style>
+    .context-menu {
+        display: none;
+        position: absolute;
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 10px;
+        z-index: 1000;
+    }
+    .context-menu ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+    .context-menu li {
+        padding: 5px;
+        cursor: pointer;
+    }
+    .context-menu li:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+<script>
+    const contextMenu = document.getElementById('context-menu');
+    let currentCell = null;
+
+    document.addEventListener('click', function(event) {
+        if (!contextMenu.contains(event.target)) {
+            contextMenu.style.display = 'none';
+        }
+    });
+
+    document.querySelectorAll('.grade-cell').forEach(function(cell) {
+        cell.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+            currentCell = cell;
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = event.pageX + 'px';
+            contextMenu.style.top = event.pageY + 'px';
+        });
+    });
+
+    contextMenu.querySelectorAll('li').forEach(function(item) {
+        item.addEventListener('click', function() {
+            const grade = item.getAttribute('data-grade');
+            const studentId = currentCell.getAttribute('data-student-id');
+            const gradeIndex = currentCell.getAttribute('data-grade-index');
+
+            // Обновление ячейки таблицы сразу после выбора оценки
+            currentCell.textContent = grade;
+
+            contextMenu.style.display = 'none';
+        });
+    });
+
+    document.getElementById('save-button').addEventListener('click', function() {
+        const grades = [];
+
+        document.querySelectorAll('.grade-cell').forEach(function(cell) {
+            const studentId = cell.getAttribute('data-student-id');
+            const gradeIndex = cell.getAttribute('data-grade-index');
+            const grade = cell.textContent;
+
+            if (grade) {
+                grades.push({
+                    student_id: studentId,
+                    subject_id: '{{ subject.id }}',
+                    grade_index: gradeIndex,
+                    grade: grade
+                });
+            }
+        });
+
+        fetch('/save_grades', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(grades)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Ошибка сервера');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log('Оценки успешно сохранены');
+            } else {
+                console.error('Ошибка сохранения оценок:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при отправке данных:', error);
+        });
+    });
+</script>
 {% endblock %}

@@ -10,6 +10,8 @@ from flask_wtf import CSRFProtect
 import qrcode, io
 import requests
 from datetime import date
+from datetime import datetime
+
 
 
 
@@ -713,6 +715,42 @@ def grade_journal(subject_id, group_id):
         return redirect(url_for('grade_journal', subject_id=subject_id, group_id=group_id))
 
     return render_template('teacher/grade_journal.html', subject=subject, group=group, students=students, form=form)
+
+
+@app.route('/save_grades', methods=['POST'])
+def save_grades():
+    try:
+        grades = request.get_json()
+
+        for grade_data in grades:
+            student_id = grade_data['student_id']
+            subject_id = grade_data['subject_id']
+            grade_index = grade_data['grade_index']
+            grade = grade_data['grade']
+
+            grade_entry = Grade.query.filter_by(
+                student_id=student_id,
+                subject_id=subject_id,
+                grade_index=grade_index
+            ).first()
+
+            if grade_entry:
+                grade_entry.grade = grade
+            else:
+                grade_entry = Grade(
+                    student_id=student_id,
+                    subject_id=subject_id,
+                    grade_index=grade_index,
+                    grade=grade,
+                    date=datetime.now().date()
+                )
+                db.session.add(grade_entry)
+
+        db.session.commit()
+        return jsonify(success=True)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, error=str(e)), 500
 
 if __name__ == "__main__":
     with app.app_context():
