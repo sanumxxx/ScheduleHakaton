@@ -13,18 +13,33 @@
             <thead>
                 <tr>
                     <th>Студент</th>
-                    <th>Оценка 1</th>
-                    <th>Оценка 2</th>
-                    <th>Оценка 3</th>
-                    <th>Оценка 4</th>
-                    <th>Оценка 5</th>
+                    <th>1</th>
+                    <th>2</th>
+                    <th>3</th>
+                    <th>4</th>
+                    <th>5</th>
+                    <th>6</th>
+                    <th>7</th>
+                    <th>8</th>
+                    <th>9</th>
+                    <th>10</th>
+                    <th>11</th>
+                    <th>12</th>
+                    <th>13</th>
+                    <th>14</th>
+                    <th>15</th>
+                    <th>16</th>
+                    <th>17</th>
+                    <th>18</th>
+                    <th>19</th>
+                    <th>20</th>
                 </tr>
             </thead>
             <tbody>
                 {% for student in students %}
                     <tr>
                         <td>{{ student.first_name }} {{ student.last_name }}</td>
-                        {% for i in range(1, 6) %}
+                        {% for i in range(1, 21) %}
                             <td class="grade-cell" data-student-id="{{ student.id }}" data-grade-index="{{ i }}">
                                 {% set grade = student.grades|selectattr('grade_index', 'equalto', i)|first %}
                                 {% if grade %}
