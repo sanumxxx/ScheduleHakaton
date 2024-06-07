@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация студента</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div style="text-align: center;">
+        <h1>Регистрация студента</h1>
+        <h2>{{ student.last_name }} {{ student.first_name }}</h2>
+        <div>
+            <img src="{{ url_for('qr_code', student_id=student.id) }}" alt="QR Code">
+        </div>
+        <p>Сканируйте QR-код для регистрации</p>
+    </div>
+</body>
+</html>

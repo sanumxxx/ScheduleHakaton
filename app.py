@@ -1,26 +1,26 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, make_response
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from datetime import datetime
-from models import db, User, Group, Department, Faculty, Teacher, Subject, ScheduleEntry, Grade, RegistrationRequest, \
+from models import db, User, Group, Department, Faculty, Teacher, Subject, ScheduleEntry, RegistrationRequest, \
     Message, Student
 from forms import LoginForm, RegisterForm, GroupForm, DepartmentForm, FacultyForm, SubjectForm, ScheduleEntryForm, \
-    GradeForm, MessageForm, TeacherForm, EditTeacherForm, StudentForm, FlaskForm
+    MessageForm, EditTeacherForm, StudentForm, FlaskForm
 from flask import jsonify
-import email_validator
 from flask_wtf import CSRFProtect
+import qrcode, io
+import requests
 
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Замените на свой секретный ключ
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///schedule.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://a0992402_sanumxxx:Yandex200515@sanumxxx.fun/a0992402_schedule'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-csrf = CSRFProtect(app)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -425,7 +425,6 @@ def registration_requests():
     requests = RegistrationRequest.query.all()
     return render_template('admin/registration_requests.html', requests=requests)
 
-
 # Teacher routes
 # Teacher routes
 @app.route('/teacher/dashboard')
@@ -474,6 +473,7 @@ def view_schedule():
         selected_week_type=selected_week_type
     )
 
+
 @app.route('/teacher/get_schedule', methods=['GET'])
 @login_required
 def get_schedule():
@@ -494,38 +494,49 @@ def get_schedule():
 
     return jsonify(schedule)
 
+
 @app.route('/teacher/messages', methods=['GET', 'POST'])
 @login_required
 def teacher_messages():
-    if current_user.is_admin:
+    teacher = Teacher.query.filter_by(user_id=current_user.id).first()
+
+    if not teacher:
+        flash('You are not a teacher', 'danger')
         return redirect(url_for('index'))
 
-    teacher = current_user.teacher
-    if not teacher:
-        flash('Вы не являетесь преподавателем.', 'warning')
-        return redirect(url_for('teacher_dashboard'))
-
     form = MessageForm()
-    form.group_ids.choices = [(g.id, g.name) for g in teacher.department.groups]
+
+    if hasattr(teacher, 'department'):
+        form.group_ids.choices = [(g.id, g.name) for g in teacher.department.groups]
+    else:
+        form.group_ids.choices = []
 
     if form.validate_on_submit():
-        message = Message(content=form.content.data, user_id=current_user.id)
+        message = Message(
+            content=form.content.data,
+            user_id=current_user.id
+        )
         db.session.add(message)
+        db.session.commit()
+
         for group_id in form.group_ids.data:
             group = Group.query.get(group_id)
-            message.groups.append(group)
+            group.messages.append(message)
+
         db.session.commit()
-        flash('Сообщение отправлено.', 'success')
+
+        flash('Message sent successfully', 'success')
         return redirect(url_for('teacher_messages'))
 
-    messages = Message.query.filter(Message.groups.any(Group.department_id == teacher.department_id)).all()
-    return render_template('teacher/messages.html', messages=messages, form=form)
+    return render_template('teacher/teacher_messages.html', form=form)
+
 
 @app.route('/students')
 @login_required
 def students():
     groups = Group.query.all()
     return render_template('students.html', groups=groups)
+
 
 @app.route('/teacher/students/<int:group_id>', methods=['GET'])
 @login_required
@@ -534,6 +545,7 @@ def view_students(group_id):
     students = group.students
     form = FlaskForm()  # Создаем пустую форму для CSRF-токена
     return render_template('teacher/view_students.html', group=group, students=students, form=form)
+
 
 @app.route('/teacher/students/add/<int:group_id>', methods=['GET', 'POST'])
 @login_required
@@ -554,6 +566,8 @@ def add_student(group_id):
         return redirect(url_for('view_students', group_id=group_id))
 
     return render_template('teacher/add_student.html', form=form, group=group)
+
+
 @app.route('/teacher/students/edit/<int:student_id>', methods=['GET', 'POST'])
 @login_required
 def edit_student(student_id):
@@ -570,6 +584,8 @@ def edit_student(student_id):
         return redirect(url_for('view_students', group_id=student.group_id))
 
     return render_template('teacher/edit_student.html', form=form)
+
+
 @app.route('/teacher/delete_student/<int:student_id>', methods=['POST'])
 @login_required
 def delete_student(student_id):
@@ -578,6 +594,7 @@ def delete_student(student_id):
     db.session.delete(student)
     db.session.commit()
     return redirect(url_for('teacher_students', group_id=group_id))
+
 
 @app.route('/teacher/students')
 @login_required
@@ -589,6 +606,7 @@ def teacher_students():
 
     groups = Group.query.filter_by(department_id=teacher.department_id).all()
     return render_template('teacher/students.html', groups=groups)
+
 
 @app.route('/teacher/students/<int:group_id>', methods=['GET', 'POST'])
 @login_required
@@ -610,6 +628,50 @@ def manage_students(group_id):
 
     students = Student.query.filter_by(group_id=group_id).all()
     return render_template('teacher/view_students.html', group=group, students=students, form=form)
+
+
+@app.route('/generate_registration_link/<int:student_id>')
+def generate_registration_link(student_id):
+    student = Student.query.get(student_id)
+    if not student:
+        return "Student not found", 404
+
+    qr_img = generate_qr_code(student_id)
+    img_io = io.BytesIO()
+    qr_img.save(img_io, 'PNG')
+    img_io.seek(0)
+
+    return render_template('generate_registration_link.html', student=student, qr_code_data=img_io)
+
+
+def generate_qr_code(student_id):
+    base_url = "https://t.me/kafedra_it_bot?start=register_"
+    qr_data = f"{base_url}{student_id}"
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
+    return img
+
+
+@app.route('/qr_code/<int:student_id>')
+def qr_code(student_id):
+    student = Student.query.get(student_id)
+    if not student:
+        return "Student not found", 404
+
+    qr_img = generate_qr_code(student_id)
+    img_io = io.BytesIO()
+    qr_img.save(img_io, 'PNG')
+    img_io.seek(0)
+
+    return send_file(img_io, mimetype='image/png')
+
 
 if __name__ == "__main__":
     with app.app_context():

@@ -97,5 +97,7 @@ class Student(db.Model):
     last_name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
-    is_registered = db.Column(db.Boolean, default=False)
+    is_approved = db.Column(db.Boolean, default=False)  # Renamed to match convention
+    telegram_id = db.Column(db.String(100), nullable=True)  # New field for Telegram ID
     group = db.relationship('Group', backref=db.backref('students', lazy=True))
+

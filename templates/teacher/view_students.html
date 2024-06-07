@@ -22,7 +22,7 @@
                         <td>{{ student.first_name }} {{ student.last_name }}</td>
                         <td>{{ student.email }}</td>
                         <td>
-                            {% if student.is_approved %}
+                            {% if student.telegram_id and student.is_approved %}
                                 <span class="badge badge-success">Подтвержден</span>
                             {% else %}
                                 <span class="badge badge-warning">Не подтвержден</span>
@@ -31,9 +31,9 @@
                         <td>
                             <a href="{{ url_for('edit_student', student_id=student.id) }}" class="btn btn-warning btn-sm">Редактировать</a>
                             <form action="{{ url_for('delete_student', student_id=student.id) }}" method="post" style="display:inline;">
-                                {{ form.csrf_token }}
                                 <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Вы уверены, что хотите удалить этого студента?');">Удалить</button>
                             </form>
+                            <a href="{{ url_for('generate_registration_link', student_id=student.id) }}" class="btn btn-info btn-sm">Сгенерировать ссылку</a>
                         </td>
                     </tr>
                 {% endfor %}
