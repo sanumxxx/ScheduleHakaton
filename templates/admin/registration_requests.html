@@ -22,12 +22,14 @@
                     <td>{{ request.username }}</td>
                     <td>{{ request.department.name }}</td>
                     <td>
-                        <form action="{{ url_for('approve_registration', request_id=request.id) }}" method="post">
-                            <button type="submit" class="btn btn-success">Одобрить</button>
-                        </form>
-                        <form action="{{ url_for('reject_registration', request_id=request.id) }}" method="post" style="display:inline;">
-                            <button type="submit" class="btn btn-danger">Отклонить</button>
-                        </form>
+                        <div class="btn-group" role="group">
+                            <form action="{{ url_for('approve_registration', request_id=request.id) }}" method="post" style="display:inline-block; margin: 5px;">
+                                <button type="submit" class="btn btn-success">Одобрить</button>
+                            </form>
+                            <form action="{{ url_for('reject_registration', request_id=request.id) }}" method="post" style="display:inline-block; margin: 5px;">
+                                <button type="submit" class="btn btn-danger">Отклонить</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

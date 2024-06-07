@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Выбор группы{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="my-4">Выбор группы для предмета {{ subject.name }}</h1>
+        <div class="list-group">
+            {% for group in groups %}
+                <a href="{{ url_for('grade_journal', subject_id=subject.id, group_id=group.id) }}" class="list-group-item list-group-item-action">
+                    {{ group.name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

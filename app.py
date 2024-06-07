@@ -2,13 +2,15 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import db, User, Group, Department, Faculty, Teacher, Subject, ScheduleEntry, RegistrationRequest, \
-    Message, Student
+    Message, Student, Grade
 from forms import LoginForm, RegisterForm, GroupForm, DepartmentForm, FacultyForm, SubjectForm, ScheduleEntryForm, \
     MessageForm, EditTeacherForm, StudentForm, FlaskForm
 from flask import jsonify
 from flask_wtf import CSRFProtect
 import qrcode, io
 import requests
+from datetime import date
+
 
 
 
@@ -672,6 +674,45 @@ def qr_code(student_id):
 
     return send_file(img_io, mimetype='image/png')
 
+
+@app.route('/teacher/grades', methods=['GET'])
+@login_required
+def teacher_grades():
+    teacher = current_user.teacher
+    subjects = teacher.subjects  # Получаем все связанные объекты Subject
+    return render_template('teacher/grades.html', subjects=subjects)
+
+@app.route('/teacher/grades/<int:subject_id>')
+@login_required
+def select_group(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    groups = subject.department.groups
+    return render_template('teacher/select_group.html', subject=subject, groups=groups)
+@app.route('/teacher/grades/<int:subject_id>/<int:group_id>', methods=['GET', 'POST'])
+@login_required
+def grade_journal(subject_id, group_id):
+    subject = Subject.query.get_or_404(subject_id)
+    group = Group.query.get_or_404(group_id)
+    students = group.students
+
+    form = FlaskForm()  # создайте экземпляр формы
+
+    if request.method == 'POST':
+        for student in students:
+            grade_value = request.form.get(f'grade_{student.id}')
+            if grade_value:
+                grade = Grade(
+                    student_id=student.id,
+                    subject_id=subject_id,
+                    grade=grade_value,
+                    date=date.today()
+                )
+                db.session.add(grade)
+        db.session.commit()
+        flash('Оценки сохранены!', 'success')
+        return redirect(url_for('grade_journal', subject_id=subject_id, group_id=group_id))
+
+    return render_template('teacher/grade_journal.html', subject=subject, group=group, students=students, form=form)
 
 if __name__ == "__main__":
     with app.app_context():
