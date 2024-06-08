@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import db, User, Group, Department, Faculty, Teacher, Subject, ScheduleEntry, RegistrationRequest, \
@@ -6,7 +6,6 @@ from models import db, User, Group, Department, Faculty, Teacher, Subject, Sched
 from forms import LoginForm, RegisterForm, GroupForm, DepartmentForm, FacultyForm, SubjectForm, ScheduleEntryForm, \
     MessageForm, EditTeacherForm, StudentForm, FlaskForm
 from flask import jsonify
-from flask_wtf import CSRFProtect
 import qrcode, io
 import requests
 from datetime import date
