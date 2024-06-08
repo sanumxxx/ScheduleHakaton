@@ -22,4 +22,35 @@
         </form>
     </div>
 </div>
+<script>
+    fetch('/register', {
+    method: 'POST',
+    body: new URLSearchParams({
+        user_id: userId,
+        username: username
+    })
+})
+.then(response => response.json())
+.then(options => {
+    navigator.credentials.create({ publicKey: options })
+        .then(credential => {
+            // Отправка зарегистрированного аутентификатора обратно на сервер
+            fetch('/verify-registration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    credential: credential
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    console.log('WebAuthn регистрация успешна');
+                } else {
+                    console.error('Ошибка регистрации WebAuthn');
+                }
+            });
+        });
+});
+</script>
 {% endblock %}

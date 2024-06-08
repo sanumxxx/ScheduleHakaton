@@ -205,9 +205,15 @@ def manage_subjects():
 def delete_subject(subject_id):
     if not current_user.is_admin:
         return redirect(url_for('index'))
+
     subject = Subject.query.get_or_404(subject_id)
+
+    # Удаляем все оценки, связанные с данной дисциплиной
+    Grade.query.filter_by(subject_id=subject_id).delete()
+
     db.session.delete(subject)
     db.session.commit()
+
     flash('Дисциплина успешно удалена.', 'success')
     return redirect(url_for('manage_subjects'))
 
@@ -595,9 +601,14 @@ def edit_student(student_id):
 def delete_student(student_id):
     student = Student.query.get_or_404(student_id)
     group_id = student.group_id  # Получаем ID группы студента
+
+    # Удаляем все оценки, связанные с данным студентом
+    Grade.query.filter_by(student_id=student_id).delete()
+
     db.session.delete(student)
     db.session.commit()
-    return redirect(url_for('teacher_students', group_id=group_id))
+
+    return redirect(url_for('manage_students', group_id=group_id))
 
 
 @app.route('/teacher/students')
@@ -726,7 +737,7 @@ def save_grades():
             student_id = grade_data['student_id']
             subject_id = grade_data['subject_id']
             grade_index = grade_data['grade_index']
-            grade = grade_data['grade']
+            grade_value = grade_data['grade']
 
             grade_entry = Grade.query.filter_by(
                 student_id=student_id,
@@ -735,22 +746,63 @@ def save_grades():
             ).first()
 
             if grade_entry:
-                grade_entry.grade = grade
-            else:
+                if grade_value:
+                    grade_entry.grade = grade_value
+                else:
+                    db.session.delete(grade_entry)
+            elif grade_value:
                 grade_entry = Grade(
                     student_id=student_id,
                     subject_id=subject_id,
                     grade_index=grade_index,
-                    grade=grade,
+                    grade=grade_value,
                     date=datetime.now().date()
                 )
                 db.session.add(grade_entry)
 
         db.session.commit()
+
+        # Отправка уведомлений студентам
+        for grade_data in grades:
+            student_id = grade_data['student_id']
+            subject_id = grade_data['subject_id']
+            grade_value = grade_data['grade']
+
+            grade_entry = Grade.query.filter_by(
+                student_id=student_id,
+                subject_id=subject_id,
+                grade=grade_value
+            ).first()
+
+            if grade_entry and not grade_entry.notified:
+                student = Student.query.get(student_id)
+                subject = Subject.query.get(subject_id)
+                teacher = current_user.teacher
+
+                if student.telegram_id:
+                    message = f"Преподаватель {teacher.name} поставил оценку {grade_value} по предмету {subject.name}."
+                    send_telegram_message(student.telegram_id, message)
+
+                grade_entry.notified = True
+                db.session.commit()
+
         return jsonify(success=True)
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, error=str(e)), 500
+
+def send_telegram_message(telegram_id, message):
+    try:
+        bot_token = '6897033821:AAE80aF2-Kvn3dF8CSHH_PPMDoyulJMiLoo'
+        url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+        params = {
+            'chat_id': telegram_id,
+            'text': message
+        }
+        response = requests.post(url, json=params)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send message to {telegram_id}. Error: {str(e)}")
 
 if __name__ == "__main__":
     with app.app_context():
@@ -760,4 +812,4 @@ if __name__ == "__main__":
             admin = User(username='admin', password=hashed_password, is_admin=True, is_approved=True)
             db.session.add(admin)
             db.session.commit()
-    app.run(debug=True)
+    app.run(host='192.168.1.3',port=5000,  debug=True)

@@ -74,6 +74,7 @@ class Grade(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
     grade = db.Column(db.String(5), nullable=False)
+    notified = db.Column(db.Boolean, default=False)
     grade_index = db.Column(db.Integer, nullable=False)  # Добавьте это поле
     date = db.Column(db.Date, nullable=False)
     student = db.relationship('Student', backref='grades')
@@ -102,3 +103,4 @@ class Student(db.Model):
     is_approved = db.Column(db.Boolean, default=False)
     telegram_id = db.Column(db.String(100), nullable=True)
     group = db.relationship('Group', backref='students')
+

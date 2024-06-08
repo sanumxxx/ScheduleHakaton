@@ -35,21 +35,24 @@
                     <th>20</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for student in students %}
-                    <tr>
-                        <td>{{ student.first_name }} {{ student.last_name }}</td>
-                        {% for i in range(1, 21) %}
-                            <td class="grade-cell" data-student-id="{{ student.id }}" data-grade-index="{{ i }}">
-                                {% set grade = student.grades|selectattr('grade_index', 'equalto', i)|first %}
-                                {% if grade %}
-                                    {{ grade.grade }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
+           <tbody>
+        {% for student in students %}
+            <tr>
+                <td>{{ student.first_name }} {{ student.last_name }}</td>
+                {% for i in range(1, 21) %}
+                    <td class="grade-cell" data-student-id="{{ student.id }}" data-grade-index="{{ i }}">
+                        {% set grade = student.grades|selectattr('grade_index', 'equalto', i)|first %}
+                        {% if grade %}
+                            {{ grade.grade }}
+                            {% if grade.notified %}
+                                <span class="badge badge-success">Отправлено</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
                 {% endfor %}
-            </tbody>
+            </tr>
+        {% endfor %}
+    </tbody>
         </table>
         <button id="save-button" class="btn btn-primary">Сохранить</button>
     </div>
@@ -61,6 +64,8 @@
         <li data-grade="3">3</li>
         <li data-grade="4">4</li>
         <li data-grade="5">5</li>
+        <li data-grade="н">н</li>
+        <li data-grade="">&nbsp;</li>
     </ul>
 </div>
 
@@ -121,46 +126,44 @@
     });
 
     document.getElementById('save-button').addEventListener('click', function() {
-        const grades = [];
+    const grades = [];
 
-        document.querySelectorAll('.grade-cell').forEach(function(cell) {
-            const studentId = cell.getAttribute('data-student-id');
-            const gradeIndex = cell.getAttribute('data-grade-index');
-            const grade = cell.textContent;
+    document.querySelectorAll('.grade-cell').forEach(function(cell) {
+        const studentId = cell.getAttribute('data-student-id');
+        const gradeIndex = cell.getAttribute('data-grade-index');
+        const grade = cell.textContent.trim();
 
-            if (grade) {
-                grades.push({
-                    student_id: studentId,
-                    subject_id: '{{ subject.id }}',
-                    grade_index: gradeIndex,
-                    grade: grade
-                });
-            }
-        });
-
-        fetch('/save_grades', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(grades)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Ошибка сервера');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                console.log('Оценки успешно сохранены');
-            } else {
-                console.error('Ошибка сохранения оценок:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка при отправке данных:', error);
+        grades.push({
+            student_id: studentId,
+            subject_id: '{{ subject.id }}',
+            grade_index: gradeIndex,
+            grade: grade
         });
     });
+
+    fetch('/save_grades', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(grades)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка сервера');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('Оценки успешно сохранены');
+        } else {
+            console.error('Ошибка сохранения оценок:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при отправке данных:', error);
+    });
+});
 </script>
 {% endblock %}
