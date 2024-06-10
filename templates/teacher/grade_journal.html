@@ -9,34 +9,31 @@
         <h1 class="my-4">Электронный журнал</h1>
         <h2>Предмет: {{ subject.name }}</h2>
         <h3>Группа: {{ group.name }}</h3>
-<table class="table table-bordered" id="grade-table">
-    <thead>
-        <tr>
-            <th>Студент</th>
-            {% for assignment in subject.assignments %}
-                <th>{{ assignment.title }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for student in students %}
-            <tr>
-                <td>{{ student.first_name }} {{ student.last_name }}</td>
-                {% for assignment in subject.assignments %}
-                    <td class="grade-cell" data-student-id="{{ student.id }}" data-assignment-id="{{ assignment.id }}">
-    {% set grade = student.grades|selectattr('assignment_id', 'equalto', assignment.id)|first %}
-    {% if grade %}
-        {{ grade.grade }}
-        {% if grade.notified %}
-            <span class="badge badge-success">Отправлено</span>
-        {% endif %}
-    {% endif %}
-</td>
+        <table class="table table-bordered" id="grade-table">
+            <thead>
+                <tr>
+                    <th>Студент</th>
+                    {% for assignment in subject.assignments %}
+                        <th>{{ assignment.title }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                    <tr>
+                        <td>{{ student.first_name }} {{ student.last_name }}</td>
+                        {% for assignment in subject.assignments %}
+                            {% set grade = student.grades|selectattr('assignment_id', 'equalto', assignment.id)|first %}
+                            <td class="grade-cell {% if grade and grade.notified %}notified{% endif %}" data-student-id="{{ student.id }}" data-assignment-id="{{ assignment.id }}">
+                                {% if grade %}
+                                    {{ grade.grade }}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
                 {% endfor %}
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            </tbody>
+        </table>
         <button id="save-button" class="btn btn-primary">Сохранить</button>
     </div>
 </div>
@@ -73,6 +70,9 @@
     .context-menu li:hover {
         background-color: #f0f0f0;
     }
+    .notified {
+        background-color: #d4edda;
+    }
 </style>
 
 <script>
@@ -99,55 +99,65 @@
         item.addEventListener('click', function() {
             const grade = item.getAttribute('data-grade');
             const studentId = currentCell.getAttribute('data-student-id');
-            const gradeIndex = currentCell.getAttribute('data-grade-index');
+            const assignmentId = currentCell.getAttribute('data-assignment-id');
 
             // Обновление ячейки таблицы сразу после выбора оценки
             currentCell.textContent = grade;
+            currentCell.classList.remove('notified');
 
             contextMenu.style.display = 'none';
         });
     });
 
-document.getElementById('save-button').addEventListener('click', function() {
-    const grades = [];
+    document.getElementById('save-button').addEventListener('click', function() {
+        const grades = [];
 
-    document.querySelectorAll('.grade-cell').forEach(function(cell) {
-        const studentId = cell.getAttribute('data-student-id');
-        const assignmentId = cell.getAttribute('data-assignment-id');
-        const grade = cell.textContent.trim();
+        document.querySelectorAll('.grade-cell').forEach(function(cell) {
+            const studentId = cell.getAttribute('data-student-id');
+            const assignmentId = cell.getAttribute('data-assignment-id');
+            const grade = cell.textContent.trim();
 
-        console.log(`Student ID: ${studentId}, Assignment ID: ${assignmentId}, Grade: ${grade}`);
+            console.log(`Student ID: ${studentId}, Assignment ID: ${assignmentId}, Grade: ${grade}`);
 
-        grades.push({
-            student_id: studentId,
-            assignment_id: assignmentId,
-            grade: grade
+            grades.push({
+                student_id: studentId,
+                assignment_id: assignmentId,
+                grade: grade
+            });
+        });
+
+        fetch('/save_grades', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(grades)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Ошибка сервера');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log('Оценки успешно сохранены');
+                document.querySelectorAll('.grade-cell').forEach(function(cell) {
+                    cell.classList.remove('notified');
+                });
+                data.notified_grades.forEach(function(grade) {
+                    const cell = document.querySelector(`.grade-cell[data-student-id="${grade.student_id}"][data-assignment-id="${grade.assignment_id}"]`);
+                    if (cell) {
+                        cell.classList.add('notified');
+                    }
+                });
+            } else {
+                console.error('Ошибка сохранения оценок:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при отправке данных:', error);
         });
     });
-
-    fetch('/save_grades', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(grades)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Ошибка сервера');
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            console.log('Оценки успешно сохранены');
-        } else {
-            console.error('Ошибка сохранения оценок:', data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка при отправке данных:', error);
-    });
-});
 </script>
 {% endblock %}

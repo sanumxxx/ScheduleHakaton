@@ -1,3 +1,4 @@
+<!-- templates/teacher/assignments.html -->
 {% extends "base.html" %}
 
 {% block title %}Задания{% endblock %}
@@ -6,7 +7,9 @@
 <div class="row">
     <div class="col-md-12">
         <h1 class="my-4">Задания</h1>
-        <a href="{{ url_for('create_assignment') }}" class="btn btn-primary mb-3">Создать задание</a>
+        <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#createAssignmentModal">
+            Создать задание
+        </button>
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -21,15 +24,108 @@
                         <td>{{ assignment.title }}</td>
                         <td>{{ assignment.subject.name }}</td>
                         <td>
-                            <a href="{{ url_for('edit_assignment', assignment_id=assignment.id) }}" class="btn btn-sm btn-primary">Редактировать</a>
-                            <form action="{{ url_for('delete_assignment', assignment_id=assignment.id) }}" method="post" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены, что хотите удалить это задание?')">Удалить</button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editAssignmentModal{{ assignment.id }}">
+                                Редактировать
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteAssignmentModal{{ assignment.id }}">
+                                Удалить
+                            </button>
                         </td>
                     </tr>
+
+                    <!-- Модальное окно для редактирования задания -->
+                    <div class="modal fade" id="editAssignmentModal{{ assignment.id }}" tabindex="-1" role="dialog" aria-labelledby="editAssignmentModalLabel{{ assignment.id }}" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editAssignmentModalLabel{{ assignment.id }}">Редактировать задание</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form method="POST" action="{{ url_for('edit_assignment', assignment_id=assignment.id) }}">
+                                        {{ create_form.hidden_tag() }}
+                                        <div class="form-group">
+                                            {{ create_form.title.label() }}
+                                            {{ create_form.title(class="form-control", value=assignment.title) }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ create_form.description.label() }}
+                                            {{ create_form.description(class="form-control", value=assignment.description) }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ create_form.subject_id.label() }}
+                                            {{ create_form.subject_id(class="form-control") }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ create_form.submit(class="btn btn-primary") }}
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Модальное окно для удаления задания -->
+                    <div class="modal fade" id="deleteAssignmentModal{{ assignment.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteAssignmentModalLabel{{ assignment.id }}" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteAssignmentModalLabel{{ assignment.id }}">Удалить задание</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Вы уверены, что хотите удалить задание "{{ assignment.title }}"?</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                                    <form action="{{ url_for('delete_assignment', assignment_id=assignment.id) }}" method="post">
+                                        <button type="submit" class="btn btn-danger">Удалить</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Модальное окно для создания задания -->
+<div class="modal fade" id="createAssignmentModal" tabindex="-1" role="dialog" aria-labelledby="createAssignmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAssignmentModalLabel">Создать задание</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('assignments') }}">
+                    {{ create_form.hidden_tag() }}
+                    <div class="form-group">
+                        {{ create_form.title.label() }}
+                        {{ create_form.title(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ create_form.description.label() }}
+                        {{ create_form.description(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ create_form.subject_id.label() }}
+                        {{ create_form.subject_id(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ create_form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

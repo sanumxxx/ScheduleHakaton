@@ -547,15 +547,39 @@ def students():
     return render_template('students.html', groups=groups)
 
 
-@app.route('/teacher/students/<int:group_id>', methods=['GET'])
+@app.route('/teacher/students/<int:group_id>', methods=['GET', 'POST'])
 @login_required
 def view_students(group_id):
     group = Group.query.get_or_404(group_id)
     students = group.students
-    form = FlaskForm()  # Создаем пустую форму для CSRF-токена
+    form = StudentForm()
+
+    if form.validate_on_submit():
+        student_id = request.form.get('student_id')
+        if student_id:
+            # Редактирование существующего студента
+            student = Student.query.get_or_404(student_id)
+            student.first_name = form.first_name.data
+            student.last_name = form.last_name.data
+            student.email = form.email.data
+            student.group_id = form.group_id.data
+            db.session.commit()
+            flash('Данные студента обновлены', 'success')
+        else:
+            # Добавление нового студента
+            student = Student(
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                email=form.email.data,
+                group_id=group_id
+            )
+            db.session.add(student)
+            db.session.commit()
+            flash('Студент добавлен', 'success')
+
+        return redirect(url_for('view_students', group_id=group_id))
+
     return render_template('teacher/view_students.html', group=group, students=students, form=form)
-
-
 @app.route('/teacher/students/add/<int:group_id>', methods=['GET', 'POST'])
 @login_required
 def add_student(group_id):
@@ -797,7 +821,7 @@ def save_grades():
 
                     if student and assignment and teacher:
                         if student.telegram_id:
-                            message = f"Преподаватель {teacher.name} поставил оценку {grade_value} за задание '{assignment.title}' по предмету '{assignment.subject.name}'."
+                            message = f"*{teacher.name}* поставил оценку {grade_value} за задание '*{assignment.title}*' по предмету '*{assignment.subject.name}*'."
                             send_grade_notification(student.telegram_id, message)
                             print(f"Notification sent to student {student.id}")
                         else:
@@ -814,13 +838,9 @@ def save_grades():
 
         return jsonify(success=True)
 
-
     except Exception as e:
-
         print(f"Error in /save_grades: {str(e)}")
-
         db.session.rollback()
-
         return jsonify(success=False, error=str(e)), 500
 def send_grade_notification(telegram_id, message):
     try:
@@ -828,20 +848,60 @@ def send_grade_notification(telegram_id, message):
         url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
         params = {
             'chat_id': telegram_id,
-            'text': message
+            'text': message,
+            'parse_mode': 'Markdown'  # Указываем использование разметки Markdown
         }
         response = requests.post(url, json=params)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"Failed to send message to {telegram_id}. Error: {str(e)}")
 
-@app.route('/teacher/assignments')
+@app.route('/teacher/assignments', methods=['GET', 'POST'])
 @login_required
 def assignments():
     teacher = current_user.teacher
     assignments = Assignment.query.join(Subject).filter(Subject.department_id == teacher.department_id).all()
-    return render_template('teacher/assignments.html', assignments=assignments)
-@app.route('/teacher/assignments/create', methods=['GET', 'POST'])
+    create_form = AssignmentForm()
+
+    create_form.subject_id.choices = [(s.id, s.name) for s in teacher.subjects]
+
+    if create_form.validate_on_submit():
+        assignment = Assignment(
+            title=create_form.title.data,
+            description=create_form.description.data,
+            subject_id=create_form.subject_id.data
+        )
+        db.session.add(assignment)
+        db.session.commit()
+        flash('Задание создано', 'success')
+        return redirect(url_for('assignments'))
+
+    return render_template('teacher/assignments.html', assignments=assignments, create_form=create_form)
+
+@app.route('/teacher/assignments/edit/<int:assignment_id>', methods=['POST'])
+@login_required
+def edit_assignment(assignment_id):
+    teacher = current_user.teacher
+    assignment = Assignment.query.get_or_404(assignment_id)
+
+    if assignment.subject.department_id != teacher.department_id:
+        flash('Вы не можете редактировать задание для этого предмета', 'danger')
+        return redirect(url_for('assignments'))
+
+    edit_form = AssignmentForm(request.form, obj=assignment)
+    edit_form.subject_id.choices = [(s.id, s.name) for s in teacher.subjects]
+
+    if edit_form.validate_on_submit():
+        assignment.title = edit_form.title.data
+        assignment.description = edit_form.description.data
+        assignment.subject_id = edit_form.subject_id.data
+        db.session.commit()
+        flash('Задание обновлено', 'success')
+        return redirect(url_for('assignments'))
+
+    flash('Ошибка при обновлении задания', 'danger')
+    return redirect(url_for('assignments'))@app.route('/teacher/assignments/create', methods=['GET', 'POST'])
+
 @login_required
 def create_assignment():
     form = AssignmentForm()
@@ -857,19 +917,6 @@ def create_assignment():
         return redirect(url_for('assignments'))
     return render_template('teacher/create_assignment.html', form=form)
 
-@app.route('/teacher/assignments/edit/<int:assignment_id>', methods=['GET', 'POST'])
-@login_required
-def edit_assignment(assignment_id):
-    assignment = Assignment.query.get_or_404(assignment_id)
-    form = AssignmentForm(obj=assignment)
-    if form.validate_on_submit():
-        assignment.title = form.title.data
-        assignment.description = form.description.data
-        assignment.subject_id = form.subject_id.data
-        db.session.commit()
-        flash('Задание обновлено', 'success')
-        return redirect(url_for('assignments'))
-    return render_template('teacher/edit_assignment.html', form=form)
 
 @app.route('/teacher/assignments/delete/<int:assignment_id>', methods=['POST'])
 @login_required

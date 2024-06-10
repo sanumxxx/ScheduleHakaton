@@ -1,3 +1,4 @@
+<!-- templates/teacher/view_students.html -->
 {% extends "base.html" %}
 
 {% block title %}Список студентов{% endblock %}
@@ -6,7 +7,9 @@
 <div class="row">
     <div class="col-md-12">
         <h1 class="my-4">Список студентов группы {{ group.name }}</h1>
-        <a href="{{ url_for('add_student', group_id=group.id) }}" class="btn btn-primary mb-3">Добавить студента</a>
+        <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#addStudentModal">
+            Добавить студента
+        </button>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -29,7 +32,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{{ url_for('edit_student', student_id=student.id) }}" class="btn btn-warning btn-sm">Редактировать</a>
+                            <a href="#" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editStudentModal{{ student.id }}">Редактировать</a>
                             <form action="{{ url_for('delete_student', student_id=student.id) }}" method="post" onsubmit="return confirm('Вы уверены, что хотите удалить этого студента? Все связанные с ним оценки также будут удалены.');" style="display:inline;">
                                 <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
                             </form>
@@ -37,26 +40,90 @@
                         </td>
                     </tr>
 
-                    <!-- Modal -->
-                    <div class="modal fade" id="qrModal{{ student.id }}" tabindex="-1" role="dialog" aria-labelledby="qrModalLabel{{ student.id }}" aria-hidden="true">
+                    <!-- Модальное окно для редактирования студента -->
+                    <div class="modal fade" id="editStudentModal{{ student.id }}" tabindex="-1" role="dialog" aria-labelledby="editStudentModalLabel{{ student.id }}" aria-hidden="true">
                         <div class="modal-dialog" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="qrModalLabel{{ student.id }}">QR-код для {{ student.last_name }} {{ student.first_name }}</h5>
+                                    <h5 class="modal-title" id="editStudentModalLabel{{ student.id }}">Редактировать студента</h5>
                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
                                 </div>
-                                <div class="modal-body text-center">
-                                    <img src="{{ url_for('qr_code', student_id=student.id) }}" alt="QR Code">
-                                    <p>Сканируйте QR-код для регистрации</p>
+                                <div class="modal-body">
+                                    <!-- Форма редактирования студента -->
+                                    <form method="POST" action="{{ url_for('view_students', group_id=group.id) }}">
+                                        {{ form.hidden_tag() }}
+                                        <input type="hidden" name="student_id" value="{{ student.id }}">
+                                        <div class="form-group">
+                                            {{ form.first_name.label() }}
+                                            {{ form.first_name(class="form-control", value=student.first_name) }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ form.last_name.label() }}
+                                            {{ form.last_name(class="form-control", value=student.last_name) }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ form.email.label() }}
+                                            {{ form.email(class="form-control", value=student.email) }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ form.group_id.label() }}
+                                            {{ form.group_id(class="form-control", value=student.group_id) }}
+                                        </div>
+                                        <div class="form-group">
+                                            {{ form.submit(class="btn btn-primary") }}
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Модальное окно для QR-кода -->
+                    <!-- ... (код модального окна для QR-кода) ... -->
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления студента -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" role="dialog" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addStudentModalLabel">Добавить студента</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Форма добавления студента -->
+                <form method="POST" action="{{ url_for('view_students', group_id=group.id) }}">
+                    {{ form.hidden_tag() }}
+                    <div class="form-group">
+                        {{ form.first_name.label() }}
+                        {{ form.first_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.last_name.label() }}
+                        {{ form.last_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.email.label() }}
+                        {{ form.email(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.group_id.label() }}
+                        {{ form.group_id(class="form-control", value=group.id) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
