@@ -59,6 +59,13 @@ def send_schedule_button(message, group_id):
 def start_bot():
     bot.polling()
 
+def send_grade_notification(telegram_id, message):
+    try:
+        bot.send_message(telegram_id, message)
+        print(f"Grade notification sent to {telegram_id}: {message}")
+    except telebot.apihelper.ApiException as e:
+        print(f"Failed to send grade notification to {telegram_id}. Error: {str(e)}")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

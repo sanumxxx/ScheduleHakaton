@@ -69,16 +69,6 @@ class ScheduleEntry(db.Model):
     subject = db.relationship('Subject', backref='schedule_entries')
     teacher = db.relationship('Teacher', backref='schedule_entries')
 
-class Grade(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
-    grade = db.Column(db.String(5), nullable=False)
-    notified = db.Column(db.Boolean, default=False)
-    grade_index = db.Column(db.Integer, nullable=False)  # Добавьте это поле
-    date = db.Column(db.Date, nullable=False)
-    student = db.relationship('Student', backref='grades')
-    subject = db.relationship('Subject', backref='grades')
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -104,3 +94,19 @@ class Student(db.Model):
     telegram_id = db.Column(db.String(100), nullable=True)
     group = db.relationship('Group', backref='students')
 
+class Assignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
+    subject = db.relationship('Subject', backref='assignments')
+
+class Grade(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
+    grade = db.Column(db.String(5), nullable=False)
+    notified = db.Column(db.Boolean, default=False)
+    date = db.Column(db.Date, nullable=False)
+    student = db.relationship('Student', backref='grades')
+    assignment = db.relationship('Assignment', backref='grades')

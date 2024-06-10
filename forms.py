@@ -87,3 +87,13 @@ class StudentForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(StudentForm, self).__init__(*args, **kwargs)
         self.group_id.choices = [(g.id, g.name) for g in Group.query.all()]
+
+class AssignmentForm(FlaskForm):
+    title = StringField('Заголовок', validators=[DataRequired(), Length(min=2, max=100)])
+    description = TextAreaField('Описание')
+    subject_id = SelectField('Предмет', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Сохранить')
+
+    def __init__(self, *args, **kwargs):
+        super(AssignmentForm, self).__init__(*args, **kwargs)
+        self.subject_id.choices = [(s.id, s.name) for s in Subject.query.all()]

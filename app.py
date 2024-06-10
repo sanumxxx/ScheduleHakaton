@@ -1,12 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from models import db, User, Group, Department, Faculty, Teacher, Subject, ScheduleEntry, RegistrationRequest, \
-    Message, Student, Grade
+    Message, Student, Grade, Assignment
 from forms import LoginForm, RegisterForm, GroupForm, DepartmentForm, FacultyForm, SubjectForm, ScheduleEntryForm, \
-    MessageForm, EditTeacherForm, StudentForm, FlaskForm
+    MessageForm, EditTeacherForm, StudentForm, FlaskForm, AssignmentForm
 from flask import jsonify
-from flask_wtf import CSRFProtect
 import qrcode, io
 import requests
 from datetime import date
@@ -732,66 +731,98 @@ def grade_journal(subject_id, group_id):
 def save_grades():
     try:
         grades = request.get_json()
+        print(f"Received grades: {grades}")
 
         for grade_data in grades:
-            student_id = grade_data['student_id']
-            subject_id = grade_data['subject_id']
-            grade_index = grade_data['grade_index']
-            grade_value = grade_data['grade']
+            try:
+                student_id = grade_data.get('student_id')
+                assignment_id = grade_data.get('assignment_id')
+                grade_value = grade_data.get('grade')
 
-            grade_entry = Grade.query.filter_by(
-                student_id=student_id,
-                subject_id=subject_id,
-                grade_index=grade_index
-            ).first()
+                print(f"Student ID: {student_id}, Assignment ID: {assignment_id}, Grade Value: {grade_value}")
 
-            if grade_entry:
-                if grade_value:
-                    grade_entry.grade = grade_value
-                else:
-                    db.session.delete(grade_entry)
-            elif grade_value:
-                grade_entry = Grade(
+                if student_id is None or assignment_id is None or grade_value is None:
+                    print(f"Invalid grade data: {grade_data}")
+                    continue
+
+                print(f"Processing grade: student_id={student_id}, assignment_id={assignment_id}, grade_value={grade_value}")
+
+                grade_entry = Grade.query.filter_by(
                     student_id=student_id,
-                    subject_id=subject_id,
-                    grade_index=grade_index,
-                    grade=grade_value,
-                    date=datetime.now().date()
-                )
-                db.session.add(grade_entry)
+                    assignment_id=assignment_id
+                ).first()
+
+                if grade_entry:
+                    if grade_value:
+                        grade_entry.grade = grade_value
+                    else:
+                        db.session.delete(grade_entry)
+                elif grade_value:
+                    grade_entry = Grade(
+                        student_id=student_id,
+                        assignment_id=assignment_id,
+                        grade=grade_value,
+                        date=datetime.now().date()
+                    )
+                    db.session.add(grade_entry)
+
+            except KeyError as e:
+                print(f"Missing key in grade data: {e}")
+                continue
 
         db.session.commit()
+        print("Grades saved successfully")
 
         # Отправка уведомлений студентам
         for grade_data in grades:
-            student_id = grade_data['student_id']
-            subject_id = grade_data['subject_id']
-            grade_value = grade_data['grade']
+            try:
+                student_id = grade_data.get('student_id')
+                assignment_id = grade_data.get('assignment_id')
+                grade_value = grade_data.get('grade')
 
-            grade_entry = Grade.query.filter_by(
-                student_id=student_id,
-                subject_id=subject_id,
-                grade=grade_value
-            ).first()
+                if student_id is None or assignment_id is None or grade_value is None:
+                    print(f"Invalid grade data for notification: {grade_data}")
+                    continue
 
-            if grade_entry and not grade_entry.notified:
-                student = Student.query.get(student_id)
-                subject = Subject.query.get(subject_id)
-                teacher = current_user.teacher
+                grade_entry = Grade.query.filter_by(
+                    student_id=student_id,
+                    assignment_id=assignment_id,
+                    grade=grade_value
+                ).first()
 
-                if student.telegram_id:
-                    message = f"Преподаватель {teacher.name} поставил оценку {grade_value} по предмету {subject.name}."
-                    send_telegram_message(student.telegram_id, message)
+                if grade_entry and not grade_entry.notified:
+                    student = Student.query.get(student_id)
+                    assignment = Assignment.query.get(assignment_id)
+                    teacher = current_user.teacher
 
-                grade_entry.notified = True
-                db.session.commit()
+                    if student and assignment and teacher:
+                        if student.telegram_id:
+                            message = f"Преподаватель {teacher.name} поставил оценку {grade_value} за задание '{assignment.title}' по предмету '{assignment.subject.name}'."
+                            send_grade_notification(student.telegram_id, message)
+                            print(f"Notification sent to student {student.id}")
+                        else:
+                            print(f"Student {student.id} does not have a Telegram ID")
+                    else:
+                        print(f"Invalid data for notification: student={student}, assignment={assignment}, teacher={teacher}")
+
+                    grade_entry.notified = True
+                    db.session.commit()
+
+            except KeyError as e:
+                print(f"Missing key in grade data for notification: {e}")
+                continue
 
         return jsonify(success=True)
-    except Exception as e:
-        db.session.rollback()
-        return jsonify(success=False, error=str(e)), 500
 
-def send_telegram_message(telegram_id, message):
+
+    except Exception as e:
+
+        print(f"Error in /save_grades: {str(e)}")
+
+        db.session.rollback()
+
+        return jsonify(success=False, error=str(e)), 500
+def send_grade_notification(telegram_id, message):
     try:
         bot_token = '6897033821:AAE80aF2-Kvn3dF8CSHH_PPMDoyulJMiLoo'
         url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
@@ -804,6 +835,51 @@ def send_telegram_message(telegram_id, message):
     except requests.exceptions.RequestException as e:
         print(f"Failed to send message to {telegram_id}. Error: {str(e)}")
 
+@app.route('/teacher/assignments')
+@login_required
+def assignments():
+    teacher = current_user.teacher
+    assignments = Assignment.query.join(Subject).filter(Subject.department_id == teacher.department_id).all()
+    return render_template('teacher/assignments.html', assignments=assignments)
+@app.route('/teacher/assignments/create', methods=['GET', 'POST'])
+@login_required
+def create_assignment():
+    form = AssignmentForm()
+    if form.validate_on_submit():
+        assignment = Assignment(
+            title=form.title.data,
+            description=form.description.data,
+            subject_id=form.subject_id.data
+        )
+        db.session.add(assignment)
+        db.session.commit()
+        flash('Задание создано', 'success')
+        return redirect(url_for('assignments'))
+    return render_template('teacher/create_assignment.html', form=form)
+
+@app.route('/teacher/assignments/edit/<int:assignment_id>', methods=['GET', 'POST'])
+@login_required
+def edit_assignment(assignment_id):
+    assignment = Assignment.query.get_or_404(assignment_id)
+    form = AssignmentForm(obj=assignment)
+    if form.validate_on_submit():
+        assignment.title = form.title.data
+        assignment.description = form.description.data
+        assignment.subject_id = form.subject_id.data
+        db.session.commit()
+        flash('Задание обновлено', 'success')
+        return redirect(url_for('assignments'))
+    return render_template('teacher/edit_assignment.html', form=form)
+
+@app.route('/teacher/assignments/delete/<int:assignment_id>', methods=['POST'])
+@login_required
+def delete_assignment(assignment_id):
+    assignment = Assignment.query.get_or_404(assignment_id)
+    db.session.delete(assignment)
+    db.session.commit()
+    flash('Задание удалено', 'success')
+    return redirect(url_for('assignments'))
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
@@ -812,4 +888,4 @@ if __name__ == "__main__":
             admin = User(username='admin', password=hashed_password, is_admin=True, is_approved=True)
             db.session.add(admin)
             db.session.commit()
-    app.run(host='192.168.1.3',port=5000,  debug=True)
+    app.run(host='127.0.0.1',port=5000,  debug=True)
